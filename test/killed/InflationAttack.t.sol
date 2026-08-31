@@ -76,8 +76,6 @@ contract InflationAttack is Test {
         emit log_named_uint("victim shares (99 deposited)", victimShares);
 
         assertLe(attackerOut, attackerIn, "attacker cannot exceed their own input");
-        assertApproxEqAbs(
-            pool.convertToAssets(victimShares), 99 ether, 2, "victim keeps full value"
-        );
+        assertApproxEqAbs(pool.convertToAssets(victimShares), 99 ether, 2, "victim keeps full value");
     }
 }

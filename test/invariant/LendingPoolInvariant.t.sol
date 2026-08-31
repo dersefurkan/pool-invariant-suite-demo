@@ -49,8 +49,7 @@ abstract contract PoolInvariantBase is Test {
     /// in — plus their legitimate, rate-capped share of reserve-funded yield.
     function invariant_attacker_cannot_extract() public view {
         uint256 attackerIn = handler.attackerIn();
-        uint256 yieldBound =
-            attackerIn * 2 * pool.maxRatePerSecond() * handler.totalElapsed() / 1e18;
+        uint256 yieldBound = attackerIn * 2 * pool.maxRatePerSecond() * handler.totalElapsed() / 1e18;
         assertLe(handler.attackerOut(), attackerIn + yieldBound + ROUNDING_SLACK);
     }
 
@@ -61,8 +60,7 @@ abstract contract PoolInvariantBase is Test {
 
     /// (c2) Interest: every accrual is bounded by the hard rate cap.
     function invariant_accrual_bounded_by_cap() public view {
-        uint256 maxGain =
-            handler.lastAccrualBase() * pool.maxRatePerSecond() * handler.lastAccrualElapsed() / 1e18;
+        uint256 maxGain = handler.lastAccrualBase() * pool.maxRatePerSecond() * handler.lastAccrualElapsed() / 1e18;
         assertLe(handler.lastAccrualGain(), maxGain + 1);
     }
 

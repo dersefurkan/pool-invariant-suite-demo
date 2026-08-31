@@ -1,35 +1,27 @@
-# pool-invariant-suite-demo
+# Pool invariant suite
 
-[![test](https://github.com/dersefurkan32-dotcom/pool-invariant-suite-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/dersefurkan32-dotcom/pool-invariant-suite-demo/actions/workflows/ci.yml)
+[![ci](https://github.com/dersefurkan32-dotcom/pool-invariant-suite-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/dersefurkan32-dotcom/pool-invariant-suite-demo/actions/workflows/ci.yml)
 
-**Your vault's invariants shouldn't be a bullet point in a slide deck. They should be a Foundry suite that runs in CI and kills bugs before your users find them.**
+Local Foundry sample of a handler-based invariant harness for share-accounted pool math.
 
-This repo is the public sample of what an engagement delivers: a handler-based
-invariant harness plus fork tests for one synthetic but realistic protocol — a
-share-accounted lending pool with interest accrual — and one deliberately
-vulnerable variant that the suite catches and kills.
+The protocol here is original teaching code: a lending pool with interest accrual, plus a deliberately broken variant that prices shares off the live token balance. Default CI stays green on the **fixed** pool. The broken variant is opt-in so you can watch the same suite fail.
 
-Everything here is original code written for demonstration. No real protocol
-was forked, renamed, or harmed.
+Not a live exploit. No real protocol was forked.
 
-## The bug class
+## Bug class
 
-First-depositor inflation. `LendingPoolVulnerable` prices shares off the
-**live token balance** with no virtual offset:
+First-depositor inflation. `LendingPoolVulnerable` prices shares with no virtual offset:
 
 ```
 shares = deposit_amount * totalShares / asset.balanceOf(this)
 ```
 
-The sequence is a classic:
+1. Actor A deposits 1 wei — receives 1 share.
+2. Actor A donates 100 tokens with a plain transfer. No shares minted; price per share jumps.
+3. Actor B deposits 99 tokens — the math rounds down to **0 shares**.
+4. Actor A withdraws the 1 share and takes the donated plus B’s deposit.
 
-1. Attacker deposits 1 wei — gets 1 share.
-2. Attacker **donates** 100 tokens with a plain transfer. No shares minted,
-   but the price per share just moved 100×.
-3. Victim deposits 99 tokens — the math rounds down to **0 shares**.
-4. Attacker withdraws their 1 share and takes everything.
-
-## The attack (30 seconds)
+## Directed PoC
 
 ```bash
 forge test --match-contract InflationAttack -vv
@@ -42,101 +34,68 @@ forge test --match-contract InflationAttack -vv
   victim shares (99 deposited): 0
 ```
 
-The fixed pool gets the exact same sequence and holds: the attacker recovers
-their 1 wei, the victim keeps the full value of their deposit.
+The same sequence against the fixed pool holds: A recovers 1 wei; B keeps the value of the deposit.
 
-## The invariant suite
+## Invariant suite
 
-`test/invariant/` — a handler drives random deposit / withdraw / round-trip /
-attacker-deposit / donate / time-warp sequences (128 runs × 15 calls) while
-ghost variables track the attacker's in/out, per-accrual gains, and the worst
-round-trip loss. Five invariants are checked after every call:
+`test/invariant/` — a handler drives random deposit / withdraw / round-trip / donate / time-warp sequences (128 runs × 15 calls). Ghost variables track in/out, accrual, and worst round-trip loss. After every call:
 
 | Invariant | Property | Fixed pool | Vulnerable pool |
-|---|---|---|---|
-| `solvency_total_claims_backed` | Pool balance covers every outstanding share claim, modulo bounded rounding | HOLDS | holds* |
-| `attacker_cannot_extract` | No deposit/donate/withdraw sequence nets the attacker more than they put in, plus their rate-capped share of yield | HOLDS | **FAILS** |
+| --- | --- | --- | --- |
+| `solvency_total_claims_backed` | Pool balance covers outstanding share claims, modulo bounded rounding | HOLDS | holds* |
+| `attacker_cannot_extract` | No deposit/donate/withdraw sequence nets more than input plus rate-capped yield | HOLDS | **FAILS** |
 | `rate_monotonic` | Exchange rate never decreases (modulo rounding) | HOLDS | **FAILS** |
-| `accrual_bounded_by_cap` | Every interest accrual is bounded by the hard rate cap (~10%/yr linear) | HOLDS | holds |
+| `accrual_bounded_by_cap` | Interest accrual bounded by the hard rate cap (~10%/yr linear) | HOLDS | holds |
 | `round_trip_bounded_loss` | Deposit → full withdraw loses at most 2 wei of rounding dust | HOLDS | **FAILS** |
 
-*The vulnerable pool's accounting is solvent — claims equal the balance. The
-bug is not *what* it tracks, it is *how the price moves*. That is exactly why
-this class slips through reviews that only check the ledger.
+\*The vulnerable pool is solvent — claims equal the balance. The bug is how the **price** moves. Ledger-only reviews miss this class.
 
-## The killed bug: watch the suite go red
+## Watching the suite fail (opt-in)
 
-The same harness, dropped on `LendingPoolVulnerable`. The run is gated behind
-an env flag so default CI stays green on the fixed code:
+Gated so default CI stays green:
 
 ```bash
 DEMO_RUN_KILLED=1 forge test --match-contract VulnerablePoolInvariant -vv
 ```
 
-The fuzzer finds the inflation sweep on its own and shrinks it to four calls:
+The fuzzer finds the inflation sequence and shrinks it. Exact numbers vary with the fuzz seed; the kill does not.
 
-```
-[FAIL: assertion failed: 8775453558271167127 > 8750059077868022922]
-	[Sequence] (original: 7, shrunk: 4)
-		calldata=attackerDonate(uint96) args=[8750059077868022841 [8.75e18]]
-		calldata=attackerDeposit(uint96) args=[79]
-		calldata=deposit(uint96) args=[3121464160768331438581 [3.121e21]]
-		calldata=attackerWithdrawAll() args=[]
- invariant_attacker_cannot_extract()
-```
+## Fork tests (opt-in)
 
-Donate, deposit dust for the first shares, let a victim deposit into the
-inflated price, withdraw all. The assertion is the attacker's ghost
-accounting: `attackerOut > attackerIn + yieldBound + slack`.
-`Suite result: FAILED. 2 passed; 3 failed` — the suite kills it three ways.
-(Exact numbers vary with the fuzz seed; the kill does not.)
+`test/fork/` runs the **fixed** pool against mainnet WETH and USDC on an Anvil fork — real token semantics — plus a fee-on-transfer case (the pool books what it received, not what the caller asked for).
 
-## Fork tests against Ethereum mainnet state
-
-`test/fork/` runs the pool against real mainnet **WETH and USDC** on an anvil
-fork — real token semantics, no friendly mocks — plus a fee-on-transfer token
-case proving the pool books what it *received*, not what the caller asked for.
-
-Fork tests are network-dependent and opt-in. They skip silently in CI; run
-them manually or on a nightly schedule:
+Skipped in CI. Needs an Ethereum RPC:
 
 ```bash
 ETH_RPC_URL=https://eth.drpc.org forge test --match-path 'test/fork/**' -vv
 ```
 
-Any Ethereum mainnet RPC works; `https://eth.drpc.org` is a public endpoint
-that needs no key. Verified green against live mainnet state:
+Any mainnet RPC works. Public `eth.drpc.org` needs no key.
 
-```
-[PASS] test_fork_weth_round_trip()
-[PASS] test_fork_usdc_round_trip()
-[PASS] test_fork_weth_yield_accrual()
-[PASS] test_fork_fee_on_transfer_accounting()
-```
+## What a full engagement adds
 
-## What a real engagement adds on top of this sample
-
-- Invariants written against **your** pool: your share math, your rate model,
-  your reward distributor, your upgrade — not a synthetic stand-in
-- Fork fuzzing against your **live deployment** with pinned block numbers and
-  your real token list, run nightly against your RPC
-- A **red-then-green** delivery for every finding: the failing invariant is
-  the report; the fix PR makes the same suite pass
-- Handler coverage reviews: which calls, which actors, which ghost variables —
-  documented so your team can extend the suite after I leave
+- Invariants on **your** share math, rate model, distributor, upgrade
+- Fork fuzz against **your** deployment, pinned block, your token list
+- Each finding as a failing-then-fixed test
+- Handler coverage documented so your team can extend the suite
 
 ## Run it
 
 ```bash
-forge test            # full local suite: 13 passed, 2 gated suites skipped
-forge test -vv        # with attack traces
+forge test            # local suite: 13 passed, 2 gated suites skipped
+forge test -vv
 ```
 
-Requires [Foundry](https://getfoundry.sh). Default runs are fully local —
-no RPC, no keys. Fork tests and the killed-bug run are opt-in (see above).
+Requires [Foundry](https://getfoundry.sh). Default runs are local — no RPC, no keys.
+
+## Scope
+
+Authorized research and teaching. Do not point this suite at systems you do not own or are not contracted to test. See [SECURITY.md](SECURITY.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
 
 ---
 
-*Pre-ship invariant suites and fork fuzzing for lending pools and vaults.
-7 days, you keep the tests. Contact: Telegram [@FURY_Fn](https://t.me/FURY_Fn) ·
-dersefurkan32@gmail.com*
+Contact: dersefurkan32@gmail.com · Telegram [@FURY_Fn](https://t.me/FURY_Fn)
