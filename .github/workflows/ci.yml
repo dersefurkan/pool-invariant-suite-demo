@@ -1,0 +1,16 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  forge-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge build
+      # Local suite only. Fork tests need ETH_RPC_URL and stay out of CI;
+      # the killed-bug variant is opt-in via DEMO_RUN_KILLED. See README.
+      - run: forge test -vv
