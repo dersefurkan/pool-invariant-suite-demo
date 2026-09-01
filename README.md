@@ -1,6 +1,6 @@
 # Pool invariant suite
 
-[![ci](https://github.com/dersefurkan32-dotcom/pool-invariant-suite-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/dersefurkan32-dotcom/pool-invariant-suite-demo/actions/workflows/ci.yml)
+[![ci](https://github.com/dersefurkan/pool-invariant-suite-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/dersefurkan/pool-invariant-suite-demo/actions/workflows/ci.yml)
 
 Local Foundry sample of a handler-based invariant harness for share-accounted pool math.
 
