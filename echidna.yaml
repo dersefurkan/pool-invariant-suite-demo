@@ -1,0 +1,10 @@
+# echidna campaign config — see test/echidna/PoolProperties.sol
+# Run: echidna test/echidna/PoolProperties.sol --contract PoolProperties --config echidna.yaml
+testLimit: 20000
+seqLen: 30
+shrinkLimit: 5000
+workers: 8
+maxTimeDelay: 604800   # let accrual windows vary up to a week
+maxBlockDelay: 60480
+coverage: false
+format: text

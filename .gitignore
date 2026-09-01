@@ -9,3 +9,9 @@ node_modules/
 .DS_Store
 lcov.info
 coverage/
+
+# local tool artifacts (echidna/medusa/slither runs)
+.medusa-artifact-hash
+crytic-export/
+slither_results.json
+corpus/

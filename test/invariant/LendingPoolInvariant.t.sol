@@ -65,9 +65,10 @@ abstract contract PoolInvariantBase is Test {
     }
 
     /// (d) Round trip: deposit followed immediately by a full withdraw loses
-    /// at most bounded rounding dust — no silent fees, no share traps.
+    /// less than two units of share price (rounding dust scales with the
+    /// exchange rate) — no silent fees, no share traps.
     function invariant_round_trip_bounded_loss() public view {
-        assertLe(handler.worstRoundTripLoss(), ROUNDING_SLACK);
+        assertLe(handler.worstRoundTripLoss(), 2 * handler.maxRate() / 1e18 + 2);
     }
 }
 

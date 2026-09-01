@@ -29,6 +29,10 @@ contract PoolHandler is Test {
     uint256 public lastAccrualBase;
     uint256 public lastAccrualElapsed;
     uint256 public worstRoundTripLoss;
+    /// @dev Highest exchange rate seen at any call start. Floor rounding makes
+    /// the POOL keep dust: a deposit->withdraw round trip loses less than two
+    /// units of share price, so the honest wei bound is rate-relative.
+    uint256 public maxRate;
 
     constructor(IPool pool_) {
         pool = pool_;
@@ -44,6 +48,7 @@ contract PoolHandler is Test {
 
     function _snapshotRate() internal {
         rateAtCallStart = pool.exchangeRate();
+        if (rateAtCallStart > maxRate) maxRate = rateAtCallStart;
     }
 
     // --- crowd actions -----------------------------------------------------

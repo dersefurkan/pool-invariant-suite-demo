@@ -25,3 +25,26 @@ jobs:
         run: forge build --skip test
       - name: Test
         run: forge test -vv
+
+  layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Storage-layout drift guard
+        run: script/check-layout.sh
+
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - uses: actions/setup-python@v5
+      - name: Slither (report only, never fails the build)
+        run: pip install slither-analyzer && slither . --fail-none
