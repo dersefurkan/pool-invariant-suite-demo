@@ -156,4 +156,4 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-Contact: dersefurkan32@gmail.com · Telegram [@FURY_Fn](https://t.me/FURY_Fn)
+Hired version of this shape: one contract, five days, $1,500, private Foundry repo. [dersefurkan.github.io](https://dersefurkan.github.io) · dersefurkan32@gmail.com · Telegram [@FURY_Fn](https://t.me/FURY_Fn)
