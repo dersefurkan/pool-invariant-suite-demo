@@ -140,7 +140,7 @@ Any mainnet RPC works. Public `eth.drpc.org` needs no key.
 ## Run it
 
 ```bash
-forge test            # local suite: 32 passed; fork + 2 gated killed suites skipped
+forge test            # local suite: 24 passed; fork + 2 gated killed suites skipped
 forge test -vv
 ```
 
